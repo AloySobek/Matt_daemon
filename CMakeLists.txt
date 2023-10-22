@@ -7,3 +7,4 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(${PROJECT_NAME} src/main.cpp)
+add_executable(${PROJECT_NAME}_client src/client.cpp)

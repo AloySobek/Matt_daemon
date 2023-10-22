@@ -1,15 +1,26 @@
+#include <arpa/inet.h>
 #include <chrono>
 #include <csignal>
 #include <ctime>
+#include <errno.h>
 #include <fcntl.h>
 #include <fstream>
 #include <functional>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
+#include <string>
+#include <sys/errno.h>
 #include <sys/file.h>
+#include <sys/select.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#define MAX_CLIENTS 3
+#define LISTEN_PORT 4242
+
+// TODO: Ensure Coplien forms in each class
 
 class Tintin_reporter {
   public:
@@ -61,7 +72,11 @@ class Matt_daemon {
     static volatile bool running;
     static Matt_daemon *instance;
 
+    Tintin_reporter reporter;
+
     Matt_daemon() {
+        instance = this;
+
         if (mkdir("/var/lock", 0775) == -1) {
             if (errno != EEXIST) {
                 throw std::runtime_error(
@@ -74,10 +89,8 @@ class Matt_daemon {
         }
 
         if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
-            throw std::runtime_error("Cannot obtain lock file");
+            throw std::runtime_error("flock failed");
         }
-
-        instance = this;
     }
 
     void daemonize() {
@@ -112,21 +125,116 @@ class Matt_daemon {
         reporter.log("Successfully daemonized.", Tintin_reporter::Level::INFO);
     }
 
-    void listen() {
+    void loop() {
+        memset(&addr, 0, sizeof(addr));
+        memset(clients_fds, 0, sizeof(clients_fds));
+
+        if ((server_fd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+            throw std::runtime_error("socket failed");
+        }
+
+        addr.sin_len = sizeof(struct sockaddr_in);
+        addr.sin_port = htons(LISTEN_PORT);
+        addr.sin_family = AF_INET;
+        inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+
+        if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+            throw std::runtime_error(std::string("bind failed with the following error: ") +
+                                     strerror(errno));
+        }
+
+        if (listen(server_fd, MAX_CLIENTS) < 0) {
+            throw std::runtime_error("listen failed");
+        }
+
         while (running) {
-            sleep(5);
+            int max_fd = server_fd;
+
+            FD_ZERO(&readfds);
+
+            FD_SET(server_fd, &readfds);
+            for (int i = 0; i < MAX_CLIENTS; ++i) {
+                if (clients_fds[i] > 0) {
+                    FD_SET(clients_fds[i], &readfds);
+
+                    max_fd = clients_fds[i] > max_fd ? clients_fds[i] : max_fd;
+                }
+            }
+
+            if (select(max_fd + 1, &readfds, nullptr, nullptr, nullptr) < 0) {
+                if (errno != EINTR) {
+                    reporter.log(
+                        (std::string("select failed with the following error: ") + strerror(errno))
+                            .c_str(),
+                        Tintin_reporter::Level::WARN);
+                }
+
+                continue;
+            }
+
+            if (FD_ISSET(server_fd, &readfds)) {
+                struct sockaddr client_addr;
+                socklen_t client_addr_len = sizeof(client_addr);
+                int client_fd;
+
+                if ((client_fd = accept(server_fd, &client_addr, &client_addr_len)) < 0) {
+                    reporter.log(
+                        (std::string("accept failed with the following error: ") + strerror(errno))
+                            .c_str(),
+                        Tintin_reporter::Level::WARN);
+
+                    continue;
+                }
+
+                for (int i = 0; i < MAX_CLIENTS; ++i) {
+                    if (clients_fds[i] == 0) {
+                        clients_fds[i] = client_fd;
+
+                        break;
+                    }
+                }
+            }
+
+            for (int i = 0; i < MAX_CLIENTS; ++i) {
+                if (FD_ISSET(clients_fds[i], &readfds)) {
+                    int len;
+                    char buffer[1024];
+
+                    len = read(clients_fds[i], buffer, 1023);
+
+                    if (len == 0) {
+                        buffer[len] = '\0';
+
+                        close(clients_fds[i]);
+
+                        clients_fds[i] = 0;
+                    } else {
+                        reporter.log(buffer, Tintin_reporter::Level::DEBUG);
+                    }
+                }
+            }
         }
     }
 
     ~Matt_daemon() {
+        for (int i = 0; i < MAX_CLIENTS; ++i) {
+            close(clients_fds[i]);
+        }
+
+        flock(fd, LOCK_UN);
+
         close(fd);
 
         remove("/var/lock/matt_daemon.lock");
     }
 
   private:
-    Tintin_reporter reporter;
+    struct sockaddr_in addr;
+    fd_set readfds;
     int fd;
+
+    int clients_fds[MAX_CLIENTS];
+    int server_fd;
 
     static void on_sigint(int signum) {
         instance->reporter.log("Received sigint signal", Tintin_reporter::Level::INFO);
@@ -139,14 +247,24 @@ volatile bool Matt_daemon::running = true;
 Matt_daemon *Matt_daemon::instance = nullptr;
 
 int main() {
-    try {
-        Matt_daemon app;
+    Matt_daemon *app = new Matt_daemon();
+    bool daemonized = false;
 
-        app.daemonize();
-        app.listen();
+    try {
+        app->daemonize();
+
+        daemonized = true;
+
+        app->loop();
     } catch (const std::runtime_error &e) {
-        std::cerr << e.what() << std::endl;
+        if (!daemonized) {
+            std::cerr << e.what() << std::endl;
+        } else {
+            app->reporter.log(e.what(), Tintin_reporter::Level::CRITICAL);
+        }
     }
+
+    delete app;
 
     return 0;
 }
