@@ -8,6 +8,7 @@
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <sys/errno.h>
@@ -26,7 +27,7 @@ class Tintin_reporter {
   public:
     enum Level { DEBUG, INFO, WARN, ERROR, CRITICAL, MAX };
 
-    Tintin_reporter() {
+    Tintin_reporter() : file{std::make_shared<std::ofstream>()} {
         if (mkdir("/var/log/matt_daemon", 0775) == -1) {
             if (errno != EEXIST) {
                 throw std::runtime_error(
@@ -34,11 +35,17 @@ class Tintin_reporter {
             }
         }
 
-        file.open("/var/log/matt_daemon/matt_daemon.log", std::ofstream::app);
+        file->open("/var/log/matt_daemon/matt_daemon.log", std::ofstream::app);
 
-        if (!file.is_open()) {
+        if (!file->is_open()) {
             throw std::runtime_error("Log file cannot be created");
         }
+    }
+    Tintin_reporter(const Tintin_reporter &other) { file = other.file; }
+    Tintin_reporter &operator=(const Tintin_reporter &other) {
+        file = other.file;
+
+        return *this;
     }
 
     void log(const char *message, Level level) {
@@ -46,25 +53,21 @@ class Tintin_reporter {
         std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
         std::tm *localTime = std::localtime(&currentTime);
 
-        file << "[" << std::setw(2) << std::setfill('0') << localTime->tm_mday << "/"
-             << std::setw(2) << std::setfill('0') << (localTime->tm_mon + 1) << "/" << std::setw(4)
-             << (localTime->tm_year + 1900) << "-" << std::setw(2) << std::setfill('0')
-             << localTime->tm_hour << ":" << std::setw(2) << std::setfill('0') << localTime->tm_min
-             << ":" << std::setw(2) << std::setfill('0') << localTime->tm_sec << "]"
-             << " [ " << Tintin_reporter::level_to_string[level] << " ] - Matt_daemon: " << message
-             << std::endl;
+        *file << "[" << std::setw(2) << std::setfill('0') << localTime->tm_mday << "/"
+              << std::setw(2) << std::setfill('0') << (localTime->tm_mon + 1) << "/" << std::setw(4)
+              << (localTime->tm_year + 1900) << "-" << std::setw(2) << std::setfill('0')
+              << localTime->tm_hour << ":" << std::setw(2) << std::setfill('0') << localTime->tm_min
+              << ":" << std::setw(2) << std::setfill('0') << localTime->tm_sec << "]"
+              << " [ " << Tintin_reporter::level_to_string[level] << " ] - Matt_daemon: " << message
+              << std::endl;
     }
 
-    ~Tintin_reporter() {
-        file.flush();
-        file.close();
-    }
+    ~Tintin_reporter() { file->flush(); }
 
   private:
     static constexpr char const *level_to_string[Level::MAX] = {"DEBUG", "INFO", "WARN", "ERROR",
                                                                 "CRITICAL"};
-
-    std::ofstream file;
+    std::shared_ptr<std::ofstream> file;
 };
 
 class Matt_daemon {
@@ -92,6 +95,7 @@ class Matt_daemon {
             throw std::runtime_error("flock failed");
         }
     }
+    Matt_daemon(const Matt_daemon &other) {}
 
     void daemonize() {
         pid_t pid = fork();
@@ -209,7 +213,17 @@ class Matt_daemon {
 
                         clients_fds[i] = 0;
                     } else {
-                        reporter.log(buffer, Tintin_reporter::Level::DEBUG);
+                        reporter.log((std::string("Received message: ") + buffer).c_str(),
+                                     Tintin_reporter::Level::DEBUG);
+
+                        if (!strcmp("quit", buffer)) {
+                            reporter.log("Received quit command, exiting...",
+                                         Tintin_reporter::Level::INFO);
+
+                            running = false;
+
+                            break;
+                        }
                     }
                 }
             }
