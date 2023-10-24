@@ -6,5 +6,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Debug)
 
-add_executable(${PROJECT_NAME} src/main.cpp)
-add_executable(${PROJECT_NAME}_client src/client.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp src/Matt_daemon.cpp
+                               src/Tintin_reporter.cpp)
+add_executable(Ben_AFK src/client.cpp src/Tintin_reporter.cpp)
