@@ -4,7 +4,7 @@
 volatile bool Matt_daemon::running = true;
 Matt_daemon *Matt_daemon::instance = nullptr;
 
-Matt_daemon::Matt_daemon() {
+Matt_daemon::Matt_daemon() : clients_fds{0} {
     instance = this;
 
     if (mkdir("/var/lock", 0775) == -1) {
@@ -20,11 +20,22 @@ Matt_daemon::Matt_daemon() {
     if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
         throw std::runtime_error("flock failed");
     }
+
+    reporter.log("/var/lock/matt_daemon.lock lock file has been successfully acquired",
+                 Tintin_reporter::Level::INFO);
 }
 
-Matt_daemon::Matt_daemon(const Matt_daemon &other) {}
+Matt_daemon::Matt_daemon(const Matt_daemon &other) {
+    // This class contains data which is not shareable or it doesn't make sense to copy it
+}
 
-Matt_daemon &Matt_daemon::operator=(const Matt_daemon &other) { return *this; }
+Matt_daemon &Matt_daemon::operator=(const Matt_daemon &other) {
+    if (&other != this) {
+        // This class contains data which is not shareable or it doesn't make sense to copy it
+    }
+
+    return *this;
+}
 
 void Matt_daemon::daemonize() {
     pid_t pid = fork();
@@ -43,7 +54,63 @@ void Matt_daemon::daemonize() {
 
     reporter.log("Setting up signal handlers...", Tintin_reporter::Level::INFO);
 
-    std::signal(SIGINT, Matt_daemon::on_sigint);
+    // SIGKILL cannot be handled, blocked or ignored
+
+    std::signal(SIGHUP, Matt_daemon::signal_handler);
+    std::signal(SIGINT, Matt_daemon::signal_handler);
+    std::signal(SIGQUIT, Matt_daemon::signal_handler);
+    std::signal(SIGTERM, Matt_daemon::signal_handler);
+
+    std::signal(SIGUSR1, Matt_daemon::signal_handler);
+    std::signal(SIGUSR2, Matt_daemon::signal_handler);
+
+    // static void on_sigqill();
+
+    // static void on_sigtrap();
+
+    // static void on_sigabrt();
+
+    // static void on_sigbus();
+
+    // static void on_sigfpe();
+
+    // static void on_sigsegv();
+
+    // static void on_sigpipe();
+
+    // static void on_sigalrm();
+
+    // static void on_sigstkflt();
+
+    // static void on_sigchld();
+
+    // static void on_sigcont();
+
+    // static void on_sigstop();
+
+    // static void on_sigstp();
+
+    // static void on_sigttin();
+
+    // static void on_sigttou();
+
+    // static void on_sigurg();
+
+    // static void on_sigxcpu();
+
+    // static void on_sigxfsz();
+
+    // static void on_sigvtalrm();
+
+    // static void on_sigprof();
+
+    // static void on_sigwinch();
+
+    // static void on_sigio();
+
+    // static void on_sigpwr();
+
+    // static void on_sigsys();
 
     if (chdir("/") < 0) {
         throw std::runtime_error("chdir failed");
@@ -66,6 +133,12 @@ void Matt_daemon::loop() {
         throw std::runtime_error("socket failed");
     }
 
+    int allow = 1;
+
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &allow, sizeof(allow)) < 0) {
+        throw std::runtime_error("setsockopt failed");
+    }
+
     addr.sin_len = sizeof(struct sockaddr_in);
     addr.sin_port = htons(LISTEN_PORT);
     addr.sin_family = AF_INET;
@@ -79,6 +152,8 @@ void Matt_daemon::loop() {
     if (listen(server_fd, MAX_CLIENTS) < 0) {
         throw std::runtime_error("listen failed");
     }
+
+    reporter.log("Server created successfully, listening...", Tintin_reporter::Level::INFO);
 
     while (running) {
         int max_fd = server_fd;
@@ -108,42 +183,64 @@ void Matt_daemon::loop() {
         if (FD_ISSET(server_fd, &readfds)) {
             struct sockaddr client_addr;
             socklen_t client_addr_len = sizeof(client_addr);
-            int client_fd;
+            int client_fd, i = 0;
+
+            for (; i < MAX_CLIENTS; ++i) {
+                if (clients_fds[i] == 0) {
+                    break;
+                }
+            }
 
             if ((client_fd = accept(server_fd, &client_addr, &client_addr_len)) < 0) {
                 reporter.log(
                     (std::string("accept failed with the following error: ") + strerror(errno))
                         .c_str(),
                     Tintin_reporter::Level::WARN);
+            } else {
+                if (i >= MAX_CLIENTS) {
+                    reporter.log(("Client " + std::to_string(client_fd) +
+                                  " has been rejected due to MAX_CLIENTS")
+                                     .c_str(),
+                                 Tintin_reporter::Level::INFO);
 
-                continue;
-            }
+                    close(client_fd);
+                } else {
+                    reporter.log(("New client: " + std::to_string(client_fd)).c_str(),
+                                 Tintin_reporter::Level::INFO);
 
-            for (int i = 0; i < MAX_CLIENTS; ++i) {
-                if (clients_fds[i] == 0) {
                     clients_fds[i] = client_fd;
-
-                    break;
                 }
             }
         }
 
         for (int i = 0; i < MAX_CLIENTS; ++i) {
-            if (FD_ISSET(clients_fds[i], &readfds)) {
+            if (clients_fds[i] > 0 && FD_ISSET(clients_fds[i], &readfds)) {
                 int len;
                 char buffer[1024];
 
-                len = read(clients_fds[i], buffer, 1023);
+                if ((len = read(clients_fds[i], buffer, 1023)) < 0) {
+                    reporter.log(
+                        (std::string("read failed with the following error: ") + strerror(errno))
+                            .c_str(),
+                        Tintin_reporter::Level::WARN);
+
+                    continue;
+                }
+
+                buffer[len] = '\0';
 
                 if (len == 0) {
-                    buffer[len] = '\0';
-
                     close(clients_fds[i]);
 
                     clients_fds[i] = 0;
+
+                    reporter.log(
+                        ("Client: " + std::to_string(clients_fds[i]) + " disconnected.").c_str(),
+                        Tintin_reporter::Level::INFO);
                 } else {
-                    reporter.log((std::string("Received message: ") + buffer).c_str(),
-                                 Tintin_reporter::Level::DEBUG);
+                    reporter.log(
+                        ("Received new message(" + std::to_string(len) + "): " + buffer).c_str(),
+                        Tintin_reporter::Level::DEBUG);
 
                     if (!strcmp("quit", buffer)) {
                         reporter.log("Received quit command, exiting...",
@@ -155,6 +252,12 @@ void Matt_daemon::loop() {
                     }
                 }
             }
+        }
+    }
+
+    for (int i = 0; i < MAX_CLIENTS; ++i) {
+        if (clients_fds[i] != 0) {
+            close(clients_fds[i]);
         }
     }
 }
@@ -171,7 +274,7 @@ Matt_daemon::~Matt_daemon() {
     remove("/var/lock/matt_daemon.lock");
 }
 
-void Matt_daemon::on_sigint(int signum) {
+void Matt_daemon::signal_handler(int signum) {
     instance->reporter.log("Received sigint signal", Tintin_reporter::Level::INFO);
 
     running = false;

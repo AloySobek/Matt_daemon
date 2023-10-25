@@ -12,6 +12,8 @@
 #define MAX_CLIENTS 3
 #define LISTEN_PORT 4242
 
+// Matt_daemon class contains static variables which means you can't copy it, copy constructor and
+// operator= are present only because of Coplien forms
 class Matt_daemon {
   public:
     static volatile bool running;
@@ -37,7 +39,7 @@ class Matt_daemon {
     int server_fd;
     int fd;
 
-    static void on_sigint(int signum);
+    static void signal_handler(int signum);
 };
 
 #endif

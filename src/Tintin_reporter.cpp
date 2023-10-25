@@ -1,6 +1,12 @@
 #include "Tintin_reporter.hpp"
 
-Tintin_reporter::Tintin_reporter() : file{std::make_shared<std::ofstream>()} {
+Tintin_reporter::Tintin_reporter(bool stdout_only)
+    : file{std::make_shared<std::ofstream>()}, stdout_only{stdout_only} {
+
+    if (stdout_only) {
+        return;
+    }
+
     if (mkdir("/var/log/matt_daemon", 0775) == -1) {
         if (errno != EEXIST) {
             throw std::runtime_error(
@@ -15,15 +21,31 @@ Tintin_reporter::Tintin_reporter() : file{std::make_shared<std::ofstream>()} {
     }
 }
 
-Tintin_reporter::Tintin_reporter(const Tintin_reporter &other) { file = other.file; }
+Tintin_reporter::Tintin_reporter(const Tintin_reporter &other) {
+    if (stdout_only) {
+        return;
+    }
+
+    file = other.file;
+}
 
 Tintin_reporter &Tintin_reporter::operator=(const Tintin_reporter &other) {
-    file = other.file;
+    if (stdout_only) {
+        return *this;
+    }
+
+    if (&other != this) {
+        file = other.file;
+    }
 
     return *this;
 }
 
 void Tintin_reporter::log(const char *message, Level level) {
+    if (stdout_only) {
+        return;
+    }
+
     auto now = std::chrono::system_clock::now();
     std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
     std::tm *localTime = std::localtime(&currentTime);
@@ -51,4 +73,10 @@ void Tintin_reporter::log_stdout(const char *message, Level level) {
               << std::endl;
 }
 
-Tintin_reporter::~Tintin_reporter() { file->flush(); }
+Tintin_reporter::~Tintin_reporter() {
+    if (stdout_only) {
+        return;
+    }
+
+    file->flush();
+}

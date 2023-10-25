@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <string>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "Tintin_reporter.hpp"
 
@@ -49,6 +50,8 @@ class Ben_AFK {
                 continue;
             }
         }
+
+        close(client_fd);
     }
 
     ~Ben_AFK() {}
@@ -60,7 +63,7 @@ class Ben_AFK {
 };
 
 int main() {
-    Tintin_reporter reporter;
+    Tintin_reporter reporter(true);
 
     try {
         Ben_AFK client(reporter);

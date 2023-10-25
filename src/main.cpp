@@ -17,9 +17,9 @@ int main() {
     } catch (const std::runtime_error &e) {
         if (!daemonized) {
             std::cerr << e.what() << std::endl;
-        } else {
-            app->reporter.log(e.what(), Tintin_reporter::Level::CRITICAL);
         }
+
+        app->reporter.log(e.what(), Tintin_reporter::Level::CRITICAL);
     }
 
     delete app;

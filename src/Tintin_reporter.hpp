@@ -10,7 +10,7 @@ class Tintin_reporter {
   public:
     enum Level { DEBUG, INFO, WARN, ERROR, CRITICAL, MAX };
 
-    Tintin_reporter();
+    Tintin_reporter(bool stdout_only = false);
     Tintin_reporter(const Tintin_reporter &other);
     Tintin_reporter &operator=(const Tintin_reporter &other);
 
@@ -23,6 +23,8 @@ class Tintin_reporter {
     static constexpr char const *level_to_string[Level::MAX] = {"DEBUG", "INFO", "WARN", "ERROR",
                                                                 "CRITICAL"};
     std::shared_ptr<std::ofstream> file;
+
+    bool stdout_only;
 };
 
 #endif
