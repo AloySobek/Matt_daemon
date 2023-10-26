@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <csignal>
 #include <fcntl.h>
+#include <memory>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -19,13 +20,14 @@ class Matt_daemon {
     static volatile bool running;
     static Matt_daemon *instance;
 
-    Tintin_reporter reporter;
+    std::unique_ptr<Tintin_reporter> reporter;
 
     Matt_daemon();
     Matt_daemon(const Matt_daemon &other);
     Matt_daemon &operator=(const Matt_daemon &other);
 
     void daemonize();
+    void create_server();
     void loop();
 
     ~Matt_daemon();
@@ -39,7 +41,14 @@ class Matt_daemon {
     int server_fd;
     int fd;
 
+    void init_logger();
+    void acquire_lock();
+    void cleanup();
+
+    // Default behavior, receive and gracefully shutdown
     static void signal_handler(int signum);
+    // When the program receives potentially corrupting signals, bus error, seg. fault, etc...
+    static void bad_signal_handler(int signum);
 };
 
 #endif

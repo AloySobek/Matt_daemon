@@ -5,13 +5,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "Tintin_reporter.hpp"
-
 #define CONNECT_PORT 4242
 
 class Ben_AFK {
   public:
-    Ben_AFK(Tintin_reporter &reporter) : reporter{reporter} {
+    Ben_AFK() {
         if ((client_fd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
             throw std::runtime_error("socket failed");
         }
@@ -32,6 +30,13 @@ class Ben_AFK {
         if (connect(client_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
             throw std::runtime_error("connect failed");
         }
+
+        // int len = 0;
+        // char buffer[1024];
+
+        // if ((len = recv(client_fd, buffer, sizeof(buffer), 0)) < 0) {
+        //     throw std::runtime_error("recv failed");
+        // }
     }
 
     void loop() {
@@ -57,21 +62,17 @@ class Ben_AFK {
     ~Ben_AFK() {}
 
   private:
-    Tintin_reporter reporter;
-
     int client_fd;
 };
 
 int main() {
-    Tintin_reporter reporter(true);
-
     try {
-        Ben_AFK client(reporter);
+        Ben_AFK client;
 
         client.conn();
         client.loop();
     } catch (const std::runtime_error &e) {
-        reporter.log_stdout(e.what(), Tintin_reporter::Level::ERROR);
+        std::cerr << e.what() << std::endl;
     }
 
     return 0;

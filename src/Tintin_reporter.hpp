@@ -4,27 +4,47 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <string>
 #include <sys/stat.h>
 
-class Tintin_reporter {
+// Not thread safe!
+class Logger {
   public:
     enum Level { DEBUG, INFO, WARN, ERROR, CRITICAL, MAX };
 
-    Tintin_reporter(bool stdout_only = false);
-    Tintin_reporter(const Tintin_reporter &other);
-    Tintin_reporter &operator=(const Tintin_reporter &other);
+    Logger(std::shared_ptr<std::ostream> output, std::string name);
+    Logger(const Logger &other);
+    Logger &operator=(const Logger &other);
 
-    void log(const char *message, Level level);
-    void log_stdout(const char *message, Level level);
+    void set_level(Level level);
 
-    ~Tintin_reporter();
+    void debug(const char *message);
+    void info(const char *message);
+    void warn(const char *message);
+    void error(const char *message);
+    void critical(const char *message);
+
+    ~Logger();
+
+    std::shared_ptr<std::ostream> output;
 
   private:
     static constexpr char const *level_to_string[Level::MAX] = {"DEBUG", "INFO", "WARN", "ERROR",
                                                                 "CRITICAL"};
-    std::shared_ptr<std::ofstream> file;
+    std::string name;
+    Level level;
 
-    bool stdout_only;
+    void log(const char *message, Level level);
+};
+
+// Tintin_reporter is file only logger
+class Tintin_reporter : public Logger {
+  public:
+    Tintin_reporter(std::shared_ptr<std::ofstream> file, std::string name);
+    Tintin_reporter(const Tintin_reporter &other);
+    Tintin_reporter &operator=(const Tintin_reporter &other);
+
+    ~Tintin_reporter();
 };
 
 #endif
