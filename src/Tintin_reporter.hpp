@@ -15,6 +15,9 @@ class Logger {
   public:
     enum Level { DEBUG, INFO, WARN, ERROR, CRITICAL, MAX };
 
+    static constexpr char const *level_to_string[Level::MAX] = {"DEBUG", "INFO", "WARN", "ERROR",
+                                                                "CRITICAL"};
+
     Logger(std::shared_ptr<std::ostream> output, std::string name);
     Logger(const Logger &other);
     Logger &operator=(const Logger &other);
@@ -30,8 +33,6 @@ class Logger {
     ~Logger();
 
   private:
-    static constexpr char const *level_to_string[Level::MAX] = {"DEBUG", "INFO", "WARN", "ERROR",
-                                                                "CRITICAL"};
     std::shared_ptr<std::ostream> output;
     std::string name;
     Level level;
