@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -30,7 +31,6 @@ class Ben_AFK {
 
         memset(&addr, 0, sizeof(addr));
 
-        addr.sin_len = sizeof(addr);
         addr.sin_port = htons(CONNECT_PORT);
         addr.sin_family = AF_INET;
         inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
