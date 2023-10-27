@@ -1,7 +1,7 @@
 #include "Tintin_reporter.hpp"
 
 Logger::Logger(std::shared_ptr<std::ostream> output, std::string name)
-    : output{output}, name{name}, level{Level::DEBUG} {}
+    : output{output}, name{name}, level{Logger::Logger::Level::DEBUG} {}
 
 Logger::Logger(const Logger &other) {
     if (&other != this) {
@@ -24,32 +24,32 @@ Logger &Logger::operator=(const Logger &other) {
 void Logger::set_level(Level level) { this->level = level; }
 
 void Logger::debug(const char *message) {
-    if (level <= Level::DEBUG) {
-        log(message, Level::DEBUG);
+    if (level <= Logger::Level::DEBUG) {
+        log(message, Logger::Level::DEBUG);
     }
 }
 
 void Logger::info(const char *message) {
-    if (level <= Level::INFO) {
-        log(message, Level::INFO);
+    if (level <= Logger::Level::INFO) {
+        log(message, Logger::Level::INFO);
     }
 }
 
 void Logger::warn(const char *message) {
-    if (level <= Level::WARN) {
-        log(message, Level::WARN);
+    if (level <= Logger::Level::WARN) {
+        log(message, Logger::Level::WARN);
     }
 }
 
 void Logger::error(const char *message) {
-    if (level <= Level::ERROR) {
-        log(message, Level::ERROR);
+    if (level <= Logger::Level::ERROR) {
+        log(message, Logger::Level::ERROR);
     }
 }
 
 void Logger::critical(const char *message) {
-    if (level <= Level::CRITICAL) {
-        log(message, Level::CRITICAL);
+    if (level <= Logger::Level::CRITICAL) {
+        log(message, Logger::Level::CRITICAL);
     }
 }
 
