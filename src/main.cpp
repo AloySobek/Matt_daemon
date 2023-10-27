@@ -6,17 +6,16 @@
 #include "Tintin_reporter.hpp"
 
 int main() {
-    std::unique_ptr<Matt_daemon> app;
     bool daemonized = false;
 
     try {
-        app.reset(new Matt_daemon);
+        Matt_daemon app;
 
-        app->daemonize(), daemonized = true;
+        app.daemonize(), daemonized = true;
 
-        app->create_server();
+        app.create_server();
 
-        app->loop();
+        app.loop();
     } catch (const std::runtime_error &e) {
         if (!daemonized) {
             std::cerr << e.what() << std::endl;
