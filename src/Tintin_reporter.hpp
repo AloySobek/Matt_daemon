@@ -2,6 +2,7 @@
 #define TINTIN_REPORTER_HPP
 
 #include <chrono>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <memory>
