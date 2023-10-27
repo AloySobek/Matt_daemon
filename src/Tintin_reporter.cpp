@@ -65,7 +65,8 @@ void Logger::log(const char *message, Level level) {
             << (localTime->tm_year + 1900) << "-" << std::setw(2) << std::setfill('0')
             << localTime->tm_hour << ":" << std::setw(2) << std::setfill('0') << localTime->tm_min
             << ":" << std::setw(2) << std::setfill('0') << localTime->tm_sec << "]"
-            << " [ " << level_to_string[level] << " ] - " << name << ": " << message << std::endl;
+            << " [ " << Logger::level_to_string[level] << " ] - " << name << ": " << message
+            << std::endl;
 }
 
 Tintin_reporter::Tintin_reporter(std::shared_ptr<std::ofstream> file, std::string name)
