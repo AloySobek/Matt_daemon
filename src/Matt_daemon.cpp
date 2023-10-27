@@ -4,7 +4,7 @@
 volatile bool Matt_daemon::running = true;
 Matt_daemon *Matt_daemon::instance = nullptr;
 
-Matt_daemon::Matt_daemon() : addr{0}, readfds{0}, clients_fds{0}, server_fd{0}, fd{0} {
+Matt_daemon::Matt_daemon() : addr{}, readfds{}, clients_fds{}, server_fd{0}, fd{0} {
     instance = this;
 
     init_logger();
@@ -12,7 +12,10 @@ Matt_daemon::Matt_daemon() : addr{0}, readfds{0}, clients_fds{0}, server_fd{0}, 
 }
 
 // This class contains data which is not shareable or it doesn't make sense to copy it
-Matt_daemon::Matt_daemon(const Matt_daemon &other) {}
+Matt_daemon::Matt_daemon(const Matt_daemon &other) {
+    if (&other != this) {
+    }
+}
 
 // This class contains data which is not shareable or it doesn't make sense to copy it
 Matt_daemon &Matt_daemon::operator=(const Matt_daemon &other) {

@@ -14,8 +14,16 @@ class Ben_AFK {
             throw std::runtime_error("socket failed");
         }
     }
-    Ben_AFK(const Ben_AFK &other) {}
-    Ben_AFK &operator=(const Ben_AFK &other) { return *this; }
+    Ben_AFK(const Ben_AFK &other) {
+        if (&other != this) {
+        }
+    }
+    Ben_AFK &operator=(const Ben_AFK &other) {
+        if (&other != this) {
+        }
+
+        return *this;
+    }
 
     void conn() {
         struct sockaddr_in addr;
@@ -30,13 +38,6 @@ class Ben_AFK {
         if (connect(client_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
             throw std::runtime_error("connect failed");
         }
-
-        // int len = 0;
-        // char buffer[1024];
-
-        // if ((len = recv(client_fd, buffer, sizeof(buffer), 0)) < 0) {
-        //     throw std::runtime_error("recv failed");
-        // }
     }
 
     void loop() {

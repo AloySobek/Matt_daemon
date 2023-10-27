@@ -4,7 +4,8 @@ project(Matt_daemon)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_BUILD_TYPE Debug)
+
+add_compile_options(-Wall -Wextra -Werror)
 
 add_executable(${PROJECT_NAME} src/main.cpp src/Matt_daemon.cpp
                                src/Tintin_reporter.cpp)
