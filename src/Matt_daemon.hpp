@@ -3,8 +3,11 @@
 
 #include <arpa/inet.h>
 #include <csignal>
+#include <cstring>
 #include <fcntl.h>
+#include <iostream>
 #include <memory>
+#include <sys/file.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -23,8 +26,6 @@ class Matt_daemon {
     std::unique_ptr<Tintin_reporter> reporter;
 
     Matt_daemon();
-    Matt_daemon(const Matt_daemon &other);
-    Matt_daemon &operator=(const Matt_daemon &other);
 
     void daemonize();
     void create_server();
@@ -40,6 +41,9 @@ class Matt_daemon {
     int clients_fds[MAX_CLIENTS];
     int server_fd;
     int fd;
+
+    Matt_daemon(const Matt_daemon &other);
+    Matt_daemon &operator=(const Matt_daemon &other);
 
     void init_logger();
     void acquire_lock();

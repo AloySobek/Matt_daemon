@@ -7,22 +7,12 @@ Matt_daemon *Matt_daemon::instance = nullptr;
 Matt_daemon::Matt_daemon() : addr{}, readfds{}, clients_fds{}, server_fd{0}, fd{0} {
     instance = this;
 
+    if (geteuid() != 0) {
+        std::cout << "Warning: this program requires root privileges" << std::endl;
+    }
+
     init_logger();
     acquire_lock();
-}
-
-// This class contains data which is not shareable or it doesn't make sense to copy it
-Matt_daemon::Matt_daemon(const Matt_daemon &other) {
-    if (&other != this) {
-    }
-}
-
-// This class contains data which is not shareable or it doesn't make sense to copy it
-Matt_daemon &Matt_daemon::operator=(const Matt_daemon &other) {
-    if (&other != this) {
-    }
-
-    return *this;
 }
 
 void Matt_daemon::daemonize() {
@@ -140,7 +130,6 @@ void Matt_daemon::create_server() {
         throw std::runtime_error("setsockopt failed");
     }
 
-    addr.sin_len = sizeof(struct sockaddr_in);
     addr.sin_port = htons(LISTEN_PORT);
     addr.sin_family = AF_INET;
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
@@ -254,6 +243,20 @@ void Matt_daemon::loop() {
             }
         }
     }
+}
+
+// This class contains data which is not shareable or it doesn't make sense to copy it
+Matt_daemon::Matt_daemon(const Matt_daemon &other) {
+    if (&other != this) {
+    }
+}
+
+// This class contains data which is not shareable or it doesn't make sense to copy it
+Matt_daemon &Matt_daemon::operator=(const Matt_daemon &other) {
+    if (&other != this) {
+    }
+
+    return *this;
 }
 
 void Matt_daemon::init_logger() {

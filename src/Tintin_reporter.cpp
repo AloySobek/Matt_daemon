@@ -5,12 +5,16 @@ Logger::Logger(std::shared_ptr<std::ostream> output, std::string name)
 
 Logger::Logger(const Logger &other) {
     if (&other != this) {
+        name = other.name;
+        level = other.level;
         output = other.output;
     }
 }
 
 Logger &Logger::operator=(const Logger &other) {
     if (&other != this) {
+        name = other.name;
+        level = other.level;
         output = other.output;
     }
 

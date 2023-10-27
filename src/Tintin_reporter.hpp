@@ -26,11 +26,10 @@ class Logger {
 
     ~Logger();
 
-    std::shared_ptr<std::ostream> output;
-
   private:
     static constexpr char const *level_to_string[Level::MAX] = {"DEBUG", "INFO", "WARN", "ERROR",
                                                                 "CRITICAL"};
+    std::shared_ptr<std::ostream> output;
     std::string name;
     Level level;
 
